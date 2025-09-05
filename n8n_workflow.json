@@ -1,0 +1,188 @@
+{
+  "name": "Jarvis",
+  "nodes": [
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.chatTrigger",
+      "typeVersion": 1.3,
+      "position": [
+        0,
+        0
+      ],
+      "id": "c0fcdd4f-5f96-49e5-8a8a-ce56b2b42635",
+      "name": "When chat message received",
+      "webhookId": "d15000e7-dd46-42bb-aeac-9f4f74ee6915",
+      "alwaysOutputData": false
+    },
+    {
+      "parameters": {
+        "options": {
+          "systemMessage": "Your job is to assist the user with Microsoft To Do functions. Assume any requests related to To-Do's, tasks, reminders, etc. are all in reference to Microsoft To Do.\n\nIf the user requests for a task/to-do to be created, you must first get the available lists and use context from the user's message to determine which list the task should be added to (don't require exact matches to the list's name, and if no lists match, add to the default Tasks list). Optionally, a due date and/or reminder date can be requested by the user. The \"getAll: list\" task returns a list of lists, including a list ID which must be passed as json output as \"listId\".\n\nThe URL for creating To Do tasks is (note LIST_ID must be filled in with the ID of the appropriate list):\nhttps://graph.microsoft.com/v1.0/me/todo/lists/{LIST_ID}/tasks\n\nHere is how message bodies are formatted for adding Microsoft To Do tasks.\n\n✅ 1. Task with both Due Date & Reminder\n{\n  \"title\": \"Task with due + reminder\",\n  \"dueDateTime\": {\n    \"dateTime\": \"2025-09-06T16:00:00\",\n    \"timeZone\": \"Central Standard Time\"\n  },\n  \"isReminderOn\": true,\n  \"reminderDateTime\": {\n    \"dateTime\": \"2025-09-05T20:00:00\",\n    \"timeZone\": \"Central Standard Time\"\n  }\n}\n\n✅ 2. Task with Due Date only\nOmit reminder fields completely:\n\n{\n  \"title\": \"Task with due only\",\n  \"dueDateTime\": {\n    \"dateTime\": \"2025-09-06T16:00:00\",\n    \"timeZone\": \"Central Standard Time\"\n  }\n}\n\n✅ 3. Task with Reminder only\nInclude isReminderOn: true\n\nExclude dueDateTime\n\n{\n  \"title\": \"Task with reminder only\",\n  \"isReminderOn\": true,\n  \"reminderDateTime\": {\n    \"dateTime\": \"2025-09-05T20:00:00\",\n    \"timeZone\": \"Central Standard Time\"\n  }\n}\n\n✅ 4. Task with no Due Date and no Reminder\nSimplest possible payload → just the title:\n\n{\n  \"title\": \"Task with no due or reminder\"\n}\n\n🔎 Behavior Notes\nIf you don’t include dueDateTime, the task is created with no due date.\nIf you don’t include reminderDateTime, you should also omit isReminderOn.\nIf you include isReminderOn: true but don’t supply reminderDateTime, Graph will throw an error."
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 2.2,
+      "position": [
+        288,
+        0
+      ],
+      "id": "f5ede36f-62c4-4202-9f90-de530b593d72",
+      "name": "AI Agent"
+    },
+    {
+      "parameters": {
+        "resource": "list",
+        "operation": "getAll",
+        "returnAll": true
+      },
+      "type": "n8n-nodes-base.microsoftToDoTool",
+      "typeVersion": 1,
+      "position": [
+        496,
+        224
+      ],
+      "id": "1fbca836-d967-459f-bb4b-8da6b04c7e46",
+      "name": "Get many lists in Microsoft To Do",
+      "credentials": {
+        "microsoftToDoOAuth2Api": {
+          "id": "MjGDzXfSYIT8JS6O",
+          "name": "Microsoft To Do account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "modelName": "models/gemini-1.5-flash",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatGoogleGemini",
+      "typeVersion": 1,
+      "position": [
+        224,
+        224
+      ],
+      "id": "f65ce87e-4c7e-4183-8de6-6b2781fb5918",
+      "name": "Google Gemini Chat Model",
+      "credentials": {
+        "googlePalmApi": {
+          "id": "GRPEm0wYBrXNLHS3",
+          "name": "Google Gemini(PaLM) Api account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "contextWindowLength": 10
+      },
+      "type": "@n8n/n8n-nodes-langchain.memoryBufferWindow",
+      "typeVersion": 1.3,
+      "position": [
+        352,
+        224
+      ],
+      "id": "837be824-9d46-4c7f-8b14-631eca56984a",
+      "name": "Simple Memory"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('URL', ``, 'string') }}",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "oAuth2Api",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('JSON', ``, 'json') }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequestTool",
+      "typeVersion": 4.2,
+      "position": [
+        608,
+        208
+      ],
+      "id": "4eff1606-7b55-428c-8ff6-9b18e3dc6e45",
+      "name": "Create Microsoft To Do Task",
+      "credentials": {
+        "oAuth2Api": {
+          "id": "DREcNq2RB5zPj68P",
+          "name": "Microsoft OAuth2"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "When chat message received": {
+      "main": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get many lists in Microsoft To Do": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Google Gemini Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Simple Memory": {
+      "ai_memory": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_memory",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Create Microsoft To Do Task": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "saveDataErrorExecution": "all",
+    "saveDataSuccessExecution": "all",
+    "saveManualExecutions": true,
+    "saveExecutionProgress": true
+  },
+  "versionId": "edd94fcf-d520-42d3-bad8-7017b2fc1abc",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "f1ece178334224fbf418c25ae014bdb23d637ebc6396f825b4d39bd6ba5e2be2"
+  },
+  "id": "oqwWk86BGpN0XX8J",
+  "tags": []
+}
